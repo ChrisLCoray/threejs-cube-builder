@@ -1,0 +1,29 @@
+@import "../node_modules/bootstrap/scss/bootstrap";
+
+/* Theme Color overrides */
+$primary: #d200d2; // rgb(128, 0, 128)
+$secondary: #CCCCCC; // rgb(204, 204, 204)
+$light: #efefef; // rgb(239, 239, 239)
+$dark: #333; // rgb(51, 51, 51)
+$darker: #030303; // rgb(3, 3, 3)
+
+$theme-colors: (
+    "primary": $primary,
+    "secondary": $secondary,
+    "success": $success,
+    "info": $info,
+    "warning": $warning,
+    "danger": $danger,
+    "light": $light,
+    "dark": $dark
+);
+
+// Class/Style overrides
+$btn-color: $primary;
+$component-active-bg: $primary;
+$custom-checkbox-indicator-indeterminate-bg: $component-active-bg;
+$form-range-thumb-bg: $primary;
+$form-range-thumb-active-bg: tint-color($primary, 70%);
+$input-group-addon-border-color: $primary;
+
+@import "../node_modules/bootstrap/scss/bootstrap";

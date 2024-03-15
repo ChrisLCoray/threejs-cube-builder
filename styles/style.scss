@@ -1,0 +1,175 @@
+@import './custom.scss';
+
+/** vars **/
+$mobile-fontSize: 10px;
+
+:root {
+    font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    font-weight: 400;
+
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+    font-weight: 500;
+    text-decoration: inherit;
+}
+
+body {
+    background-color: $dark;
+    color: $light;
+    font-family: 'Open Sans', sans-serif;
+    margin: 0;
+    display: flex;
+    place-items: center;
+    min-width: 320px;
+    min-height: 100vh;
+}
+
+h1 {
+    font-size: 1rem;
+    line-height: 1.1;
+}
+
+button.btn.btn-primary {
+    color: $light;
+}
+
+#app {
+    margin: 0;
+    padding: 0;
+    text-align: center;
+    width: 100%;
+}
+
+#scene-container {
+    z-index: 0;
+}
+
+.controls-container {
+    background-color: $dark;
+    padding: 1rem;
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 10;
+    width: 200px;
+    height: 100vh;
+
+    &#add-box-container {
+        left: auto;
+        right: 0;
+    }
+}
+
+.custom-form {
+
+    /* Chrome, Safari, Edge, Opera */
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+        appearance: none;
+        margin: 0;
+    }
+
+    /* Firefox */
+    input[type=number] {
+        appearance: textfield;
+    }
+
+    button.btn.btn-outline-primary {
+        font-weight: 700;
+    }
+}
+
+button.btn.collapse-button {
+    padding: 0.25rem 0.25rem 0 0.25rem;
+
+    .expand-more {
+        display: none !important;
+    }
+
+    .expand-less {
+        display: inline-block !important;
+    }
+
+    &.collapsed {
+        .expand-more {
+            display: inline-block !important;
+        }
+
+        .expand-less {
+            display: none !important;
+        }
+    }
+}
+
+#edit-container {
+    top: 0;
+    left: 0;
+    min-height: 100vh;
+    overflow-y: auto;
+
+    #current-cubes {
+        overflow-y: auto;
+        overflow-x: hidden;
+
+        .cube-row {
+            border-top: 1px solid $light;
+            padding-top: 0.5rem;
+
+            .material-symbols-outlined {
+                cursor: pointer;
+            }
+
+            .cube-edit-name {
+                color: #FFFFFF;
+                padding: 3px;
+                border-radius: 6px;
+            }
+        }
+    }
+}
+
+@media (prefers-color-scheme: light) {
+    :root {
+        color: #213547;
+        background-color: #ffffff;
+    }
+
+    a:hover {
+        color: #747bff;
+    }
+
+    button {
+        background-color: #f9f9f9;
+    }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+    .controls-container {
+
+        p {
+            font-size: calc($mobile-fontSize + 4px);
+        }
+
+        #current-cubes {
+            .cube-edit-name {
+                font-size: $mobile-fontSize;
+            }
+        }
+
+        .input-group {
+
+            .input-group-text,
+            .form-control,
+            .form-select {
+                font-size: $mobile-fontSize;
+            }
+        }
+    }
+}
