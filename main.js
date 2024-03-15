@@ -348,11 +348,6 @@ function convertDegToRads(deg) {
     return (deg * (PI / 180));
 }
 
-function convertRadsToDeg(rads) {
-    const PI = 22 / 7;
-    return (rads / (PI / 180));
-}
-
 function incrementButton(e) {
     e.preventDefault();
     const thisId = e.target.id;
