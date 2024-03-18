@@ -26,6 +26,12 @@ const cameraSettings = {
 
 const colors = [
     {
+        name: 'white',
+        contrast: 'black',
+        hex: '#FFFFFF',
+        threeHex: 0xFFFFFF
+    },
+    {
         name: 'red',
         contrast: 'white',
         hex: '#9D0000',
@@ -67,12 +73,27 @@ const colors = [
         hex: '#D900CC',
         threeHex: 0xD900CC
     },
+    {
+        name: 'gray',
+        contrast: 'white',
+        hex: '#666666',
+        threeHex: 0x666666
+    },
+    {
+        name: 'black',
+        contrast: 'white',
+        hex: '#030303',
+        threeHex: 0x030303
+    },
 ];
 
 const defaultValues = {
-    boxPos: 1,
+    boxPos: { x: 0, y: 1, z: 0 },
     boxSize: 1,
-    boxColor: 'red'
+    boxColor: 'red',
+    incrementStep: 0.5,
+    sizeMin: 0.5,
+    sizeMax: 10
 }
 
 let camera, container, controls, cubeNum, renderer, scene;
@@ -171,9 +192,9 @@ function addCubeToScene(e) {
     targetForm.querySelector('#box-color').value = defaultValues.boxColor;
     targetForm.querySelector('#box-size').value = defaultValues.boxSize;
     targetForm.querySelector('#box-size-display').innerHTML = defaultValues.boxSize;
-    targetForm.querySelector('#box-x').value = defaultValues.boxPos;
-    targetForm.querySelector('#box-y').value = defaultValues.boxPos;
-    targetForm.querySelector('#box-z').value = defaultValues.boxPos;
+    targetForm.querySelector('#box-x').value = defaultValues.boxPos.x;
+    targetForm.querySelector('#box-y').value = defaultValues.boxPos.y;
+    targetForm.querySelector('#box-z').value = defaultValues.boxPos.z;
 }
 
 // add cubes to the menu for editing / deleting
@@ -201,6 +222,7 @@ function addCurrentCubesToMenu() {
             <div class="col-10">
                 <div class="row">
                     <div class="col-9 text-center">
+                        <span class="cube-icon" style="background-color: #${hexColor}">&nbsp;</span>
                         <span class="cube-edit-title">${cube.name}</span>
                     </div>
                     <div class="col-1">
@@ -214,7 +236,7 @@ function addCurrentCubesToMenu() {
                 </div>
             </div>
         </div>
-        <div id="edit${camelName}" class="collapse">
+        <div id="edit${camelName}" class="collapse collapse-row">
             <div class="col-12">
                 <div class="row mb-3">
                     <div class="input-group">
@@ -257,11 +279,6 @@ function addCurrentCubesToMenu() {
         document.querySelector('#current-cubes').appendChild(cubeDom);
         populateColorSelect(`${cube.name}-color`, colorName);
     });
-
-    const collapseElementList = [].slice.call(document.querySelectorAll('.collapse'))
-    collapseElementList.map(function (collapseEl) {
-        new Collapse(collapseEl)
-    })
 
     // Once DOM is populated, update our Event Listeners
     const delCubeButtons = document.querySelectorAll('.remove-cube');
@@ -312,17 +329,12 @@ function updateCubePosition(e) {
     const direction = splitId[2];
     const cube = scene.getObjectByName(splitId[0]);
     const thisInput = document.querySelector(`#${splitId[0]}-${axis}`);
-    let newVal = Number(thisInput.value);
-    if (axis === 'x') {
-        newVal = (direction === 'add') ? cube.position.x + 1 : cube.position.x - 1;
-        thisInput.value = cube.position.x = newVal;
-    } else if (axis === 'y') {
-        newVal = (direction === 'add') ? cube.position.y + 1 : cube.position.y - 1;
-        thisInput.value = cube.position.y = newVal;
-    } else if (axis === 'z') {
-        newVal = (direction === 'add') ? cube.position.z + 1 : cube.position.z - 1;
-        thisInput.value = cube.position.z = newVal;
-    }
+    const calcNewVal = (axis, direction) => {
+        const curPos = Number(cube.position[axis]);
+        return (direction === 'add') ? curPos + defaultValues.incrementStep : curPos - defaultValues.incrementStep;
+    };
+    let newVal = calcNewVal(axis, direction);
+    thisInput.value = cube.position[axis] = newVal;
     animate();
 }
 
@@ -355,10 +367,10 @@ function incrementButton(e) {
     let idData = undefined;
     if (thisId.indexOf('-add') > -1) {
         idData = thisId.split('-add');
-        dir = 1;
+        dir = defaultValues.incrementStep;
     } else if (thisId.indexOf('-minus') > -1) {
         idData = thisId.split('-minus')
-        dir = -1;
+        dir = defaultValues.incrementStep * -1;
     }
     const targetInput = document.querySelector(`#${idData[0]}`);
     // positions can be 0 and negative, but not size
@@ -411,7 +423,7 @@ document.querySelector('#app').innerHTML = `
                     <span id="box-size-display">1</span>
                 </div>
                 <div class="input-group mb-3">
-                    <input type="range" class="form-range" name="box-size" id="box-size" value="1" step="1" min="1" max="10" />
+                    <input type="range" class="form-range" name="box-size" id="box-size" value="${defaultValues.boxSize}" step="${defaultValues.incrementStep}" min="${defaultValues.sizeMin}" max="${defaultValues.sizeMax}" />
                 </div>
                 <div class="input-group mb-3">
                     <label class="input-group-text" for="box-color">Color:</label>
@@ -422,19 +434,19 @@ document.querySelector('#app').innerHTML = `
                     <div class="input-group mb-1">
                         <span class="input-group-text">X:</span>
                         <button id="box-x-minus" class="btn btn-outline-primary box-x-button">-</button>
-                        <input class="form-control" type="number" placeholder="X" name="box-x" id="box-x" value="1" />
+                        <input class="form-control" type="number" placeholder="X" name="box-x" id="box-x" value="${defaultValues.boxPos.x}" />
                         <button id="box-x-add" class="btn btn-outline-primary box-x-button">+</button>
                     </div>
                     <div class="input-group mb-1">
                         <span class="input-group-text">Y:</span>
                         <button id="box-y-minus" class="btn btn-outline-primary box-y-button">-</button>
-                        <input class="form-control" type="number" placeholder="Y" name="box-y" id="box-y" value="0" />
+                        <input class="form-control" type="number" placeholder="Y" name="box-y" id="box-y" value="${defaultValues.boxPos.y}" />
                         <button id="box-y-add" class="btn btn-outline-primary box-y-button">+</button>
                     </div>
                     <div class="input-group mb-1">
                         <span class="input-group-text">Z:</span>
                         <button id="box-z-minus" class="btn btn-outline-primary box-z-button">-</button>
-                        <input class="form-control" type="number" placeholder="Z" name="box-z" id="box-z" value="1" />
+                        <input class="form-control" type="number" placeholder="Z" name="box-z" id="box-z" value="${defaultValues.boxPos.z}" />
                         <button id="box-z-add" class="btn btn-outline-primary box-z-button">+</button>
                     </div>
                 </div>
