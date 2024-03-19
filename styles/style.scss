@@ -50,20 +50,28 @@ button.btn.btn-primary {
     z-index: 0;
 }
 
-.controls-container {
+#controls-container {
     background-color: $dark;
     padding: 1rem;
     display: block;
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
     z-index: 10;
-    width: 200px;
+    width: 250px;
     height: 100vh;
+    overflow-y: auto;
 
-    &#add-box-container {
-        left: auto;
-        right: 0;
+    #add-box-container {
+        border-bottom: 1px solid $light;
+        padding-bottom: 1rem;
+    }
+
+    label.custom-label {
+        display: block;
+        padding-bottom: 0.25rem;
+        text-align: center;
+        width: 100%;
     }
 }
 
@@ -89,6 +97,10 @@ button.btn.btn-primary {
 button.btn.collapse-button {
     padding: 0.25rem 0.25rem 0 0.25rem;
 
+    .material-symbols-outlined {
+        vertical-align: middle;
+    }
+
     .expand-more {
         display: none !important;
     }
@@ -109,19 +121,8 @@ button.btn.collapse-button {
 }
 
 #edit-container {
-    top: 0;
-    left: 0;
-    min-height: 100vh;
-    overflow-y: auto;
-
     #current-cubes {
-        overflow-y: auto;
-        overflow-x: hidden;
-
         .cube-row {
-            border-top: 1px solid $light;
-            padding-top: 0.5rem;
-
             .material-symbols-outlined {
                 cursor: pointer;
             }
@@ -141,6 +142,10 @@ button.btn.collapse-button {
             }
         }
     }
+}
+
+.modal .modal-body ul {
+    text-align: left;
 }
 
 @media (prefers-color-scheme: light) {

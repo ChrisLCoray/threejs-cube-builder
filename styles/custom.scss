@@ -25,5 +25,6 @@ $custom-checkbox-indicator-indeterminate-bg: $component-active-bg;
 $form-range-thumb-bg: $primary;
 $form-range-thumb-active-bg: tint-color($primary, 70%);
 $input-group-addon-border-color: $primary;
+$modal-content-bg: $dark;
 
 @import "../node_modules/bootstrap/scss/bootstrap";

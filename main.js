@@ -1,6 +1,8 @@
 import './styles/style.scss'
 import * as THREE from 'three';
+// Bootstrap imports look unused, but only because DOM is generated
 import { Collapse } from 'bootstrap';
+import { Modal } from 'bootstrap';
 
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
@@ -13,12 +15,12 @@ const cameraSettings = {
     near: 0.1,
     far: 1000,
     position: {
-        x: 5,
+        x: 0,
         y: 2,
         z: -5,
     },
     rotation: {
-        x: -135,
+        x: 135,
         y: 42,
         z: 135
     }
@@ -89,7 +91,7 @@ const colors = [
 
 const defaultValues = {
     boxPos: { x: 0, y: 1, z: 0 },
-    boxSize: 1,
+    boxSize: { x: 1, y: 1, z: 1 },
     boxColor: 'red',
     incrementStep: 0.5,
     sizeMin: 0.5,
@@ -146,12 +148,12 @@ const init = () => {
     addBoxToScene(1, 0x009D00, { x: 0, y: 0, z: 0 });
 }
 
-// addCubeToScene is the event-driven call from the form that converts vals in preparation for adding,
+// prepCubeForScene is the event-driven call from the form that converts vals in preparation for adding,
 // addBoxToScene actually takes those params and adds them to the scene
 // size: int, hexColor: 0x00000, position {x, y, z}
 function addBoxToScene(size, hexColor, pos) {
     const color = new THREE.Color(hexColor);
-    const geometry = new THREE.BoxGeometry(size, size, size);
+    const geometry = new THREE.BoxGeometry(size.x, size.y, size.z);
     const material = new THREE.MeshBasicMaterial({ color: color });
     const cube = new THREE.Mesh(geometry, material);
     cube.position.x = pos.x;
@@ -163,47 +165,95 @@ function addBoxToScene(size, hexColor, pos) {
     addCurrentCubesToMenu();
 }
 
-function addCubeToScene(e) {
+function prepCubeForScene(e) {
     e.preventDefault();
-    let validated = true;
+    let errorMessages = [];
     const targetForm = e.target.form;
-    const size = targetForm.querySelector('#box-size').value;
+
+    const cubePos = {
+        x: Number(targetForm.querySelector('#pos-x').value),
+        y: Number(targetForm.querySelector('#pos-y').value),
+        z: Number(targetForm.querySelector('#pos-z').value)
+    };
+    const cubeSize = {
+        x: Number(targetForm.querySelector('#size-x').value),
+        y: Number(targetForm.querySelector('#size-y').value),
+        z: Number(targetForm.querySelector('#size-z').value)
+    };
     const color = colors.find(c => c.name === targetForm.querySelector('#box-color').value);
-    const colorHex = color.threeHex;
+    const colorHex = color?.threeHex;
 
-    let cubePos = { x: targetForm.querySelector('#box-x').value, y: targetForm.querySelector('#box-y').value, z: targetForm.querySelector('#box-z').value }
-    if (!size || !Number(size) || size < 1 || size > 10) {
-        validated = false;
-        alert('Invalid value for "size"');
-    }
-    if (!colorHex) {
-        validated = false;
-        alert('Invalid value for "color"');
-    }
-    if (!cubePos.x || !cubePos.y || !cubePos.z) {
-        validated = false;
-        alert('Invalid value for cube position');
-    }
-    if (validated) {
-        addBoxToScene(size, colorHex, cubePos);
+    for (const pos in cubePos) {
+        const posVal = cubePos[pos];
+        if (posVal === undefined || typeof (posVal) !== 'number') errorMessages.push(`Invalid Position for ${pos}: ${posVal}`);
     }
 
-    // Clear Form
+    for (const size in cubeSize) {
+        const sizeVal = cubeSize[size];
+        if (sizeVal === undefined || typeof (sizeVal) !== 'number' || sizeVal <= 0) errorMessages.push(`Invalid Size for ${size}: ${sizeVal}`);
+    }
+
+    if (!color || !colorHex) {
+        errorMessages.push(`Invalid Color`);
+    }
+
+    if (errorMessages.length === 0) {
+        addBoxToScene(cubeSize, colorHex, cubePos);
+    } else {
+        errorModal(`Error adding cube:`, errorMessages);
+    }
+}
+
+function errorModal(errorTitle, errorMessages) {
+    if (errorMessages.length > 0) {
+        const modalEl = document.querySelector('.modal');
+        const modal = new Modal(modalEl, {
+            keyboard: false
+        });
+        if (modal) {
+            const modalTitle = modalEl.querySelector('.modal-title');
+            const modalBody = modalEl.querySelector('.modal-body');
+            modalTitle.textContent = errorTitle;
+            const messageList = document.createElement('ul');
+            messageList.setAttribute('id', `message-list`);
+
+            errorMessages.forEach((m) => {
+                const li = document.createElement('li');
+                li.textContent = m;
+                messageList.appendChild(li);
+            });
+            modalBody.appendChild(messageList);
+
+            modal.show();
+
+            setTimeout(() => {
+                modal.hide();
+            }, 10000);
+        }
+    }
+}
+
+function resetAddForm(e) {
+    e.preventDefault();
+    const targetForm = document.getElementById('add-box-form');
     targetForm.querySelector('#box-color').value = defaultValues.boxColor;
-    targetForm.querySelector('#box-size').value = defaultValues.boxSize;
-    targetForm.querySelector('#box-size-display').innerHTML = defaultValues.boxSize;
-    targetForm.querySelector('#box-x').value = defaultValues.boxPos.x;
-    targetForm.querySelector('#box-y').value = defaultValues.boxPos.y;
-    targetForm.querySelector('#box-z').value = defaultValues.boxPos.z;
+    targetForm.querySelector('#size-x').value = defaultValues.boxSize.x;
+    targetForm.querySelector('#size-y').value = defaultValues.boxSize.y;
+    targetForm.querySelector('#size-z').value = defaultValues.boxSize.z;
+    targetForm.querySelector('#pos-x').value = defaultValues.boxPos.x;
+    targetForm.querySelector('#pos-y').value = defaultValues.boxPos.y;
+    targetForm.querySelector('#pos-z').value = defaultValues.boxPos.z;
 }
 
 // add cubes to the menu for editing / deleting
 function addCurrentCubesToMenu() {
+    removeEventListeners();
     document.querySelector('#current-cubes').innerHTML = ``;
 
     const sceneChildren = scene.children.filter(child => child.name.indexOf('cube') > -1);
     sceneChildren.forEach((cube) => {
         const camelName = stringToCamel(cube.name);
+        const cubeSize = { x: cube.geometry.parameters.width, y: cube.geometry.parameters.height, z: cube.geometry.parameters.depth };
         const rgbColor = cube.material.color;
         const hexColor = rgbColor.getHexString();
         const color = colors.find(c => c.hex === `#${hexColor.toUpperCase()}`);
@@ -211,8 +261,6 @@ function addCurrentCubesToMenu() {
         let cubeDom = document.createElement('div');
         cubeDom.setAttribute('id', `${cube.name}-container`);
         cubeDom.setAttribute('class', `row mb-3 cube-row custom-form`);
-        // this is simplified, boxSize should be an obj with x, y, z, but for simplicity, only working with equilateral cubes
-        let boxSize = cube.geometry.parameters.height;
 
         cubeDom.innerHTML = `
         <div class="row mb-2">
@@ -239,11 +287,24 @@ function addCurrentCubesToMenu() {
         <div id="edit${camelName}" class="collapse collapse-row">
             <div class="col-12">
                 <div class="row mb-3">
-                    <div class="input-group">
-                        <span class="input-group-text">Size:</span>
-                        <button id="${cube.name}-size-minus" class="btn btn-outline-primary cube-size-change">-</button>
-                        <input class="form-control" type="number" name="${cube.name}-size" id="${cube.name}-size" value="${boxSize}" />
-                        <button id="${cube.name}-size-add" class="btn btn-outline-primary cube-size-change">+</button>
+                    <label class="custom-label">Size (X/Y/Z):</label>
+                    <div class="input-group mb-3">
+                        <span class="input-group-text">X:</span>
+                        <button id="${cube.name}-size-x-minus" class="btn btn-outline-primary cube-increment">-</button>
+                        <input class="form-control cube-input" type="number" name="${cube.name}-size-x" id="${cube.name}-size-x" value="${cubeSize.x}" />
+                        <button id="${cube.name}-size-x-add" class="btn btn-outline-primary cube-increment">+</button>
+                    </div>
+                    <div class="input-group mb-3">
+                        <span class="input-group-text">Y:</span>
+                        <button id="${cube.name}-size-y-minus" class="btn btn-outline-primary cube-increment">-</button>
+                        <input class="form-control cube-input" type="number" name="${cube.name}-size-y" id="${cube.name}-size-y" value="${cubeSize.y}" />
+                        <button id="${cube.name}-size-y-add" class="btn btn-outline-primary cube-increment">+</button>
+                    </div>
+                    <div class="input-group mb-3">
+                        <span class="input-group-text">Z:</span>
+                        <button id="${cube.name}-size-z-minus" class="btn btn-outline-primary cube-increment">-</button>
+                        <input class="form-control cube-input" type="number" name="${cube.name}-size-z" id="${cube.name}-size-z" value="${cubeSize.z}" />
+                        <button id="${cube.name}-size-z-add" class="btn btn-outline-primary cube-increment">+</button>
                     </div>
                 </div>
                 <div class="row mb-3">
@@ -253,24 +314,24 @@ function addCurrentCubesToMenu() {
                     </div>
                 </div>
                 <div class="row">
-                    <label>Position (X/Y/Z):</label>
+                    <label class="custom-label">Position (X/Y/Z):</label>
                     <div class="input-group mb-3">
                         <span class="input-group-text">X:</span>
-                        <button id="${cube.name}-x-minus" class="btn btn-outline-primary cube-update-pos">-</button>
-                        <input class="form-control" type="number" name="${cube.name}-x" id="${cube.name}-x" value="${cube.position.x}" />
-                        <button id="${cube.name}-x-add" class="btn btn-outline-primary cube-update-pos">+</button>
+                        <button id="${cube.name}-pos-x-minus" class="btn btn-outline-primary cube-increment">-</button>
+                        <input class="form-control cube-input" type="number" name="${cube.name}-pos-x" id="${cube.name}-pos-x" value="${cube.position.x}" />
+                        <button id="${cube.name}-pos-x-add" class="btn btn-outline-primary cube-increment">+</button>
                     </div>
                     <div class="input-group mb-3">
                         <span class="input-group-text">Y:</span>
-                        <button id="${cube.name}-y-minus" class="btn btn-outline-primary cube-update-pos">-</button>
-                        <input class="form-control" type="number" name="${cube.name}-y" id="${cube.name}-y" value="${cube.position.y}" />
-                        <button id="${cube.name}-y-add" class="btn btn-outline-primary cube-update-pos">+</button>
+                        <button id="${cube.name}-pos-y-minus" class="btn btn-outline-primary cube-increment">-</button>
+                        <input class="form-control cube-input" type="number" name="${cube.name}-pos-y" id="${cube.name}-pos-y" value="${cube.position.y}" />
+                        <button id="${cube.name}-pos-y-add" class="btn btn-outline-primary cube-increment">+</button>
                     </div>
                     <div class="input-group mb-3">
                         <span class="input-group-text">Z:</span>
-                        <button id="${cube.name}-z-minus" class="btn btn-outline-primary cube-update-pos">-</button>
-                        <input class="form-control" type="number" name="${cube.name}-z" id="${cube.name}-z" value="${cube.position.z}" />
-                        <button id="${cube.name}-z-add" class="btn btn-outline-primary cube-update-pos">+</button>
+                        <button id="${cube.name}-pos-z-minus" class="btn btn-outline-primary cube-increment">-</button>
+                        <input class="form-control cube-input" type="number" name="${cube.name}-pos-z" id="${cube.name}-pos-z" value="${cube.position.z}" />
+                        <button id="${cube.name}-pos-z-add" class="btn btn-outline-primary cube-increment">+</button>
                     </div>
                 </div>
             </div>
@@ -281,60 +342,49 @@ function addCurrentCubesToMenu() {
     });
 
     // Once DOM is populated, update our Event Listeners
-    const delCubeButtons = document.querySelectorAll('.remove-cube');
-    delCubeButtons.forEach((b) => {
-        b.addEventListener('click', removeCube);
-    });
-
-    const addMinusButtons = document.querySelectorAll('.cube-size-change');
-    addMinusButtons.forEach((b) => {
-        b.addEventListener('click', updateCubeSize);
-    });
-
-    const changePosButtons = document.querySelectorAll('.cube-update-pos');
-    changePosButtons.forEach((b) => {
-        b.addEventListener('click', updateCubePosition);
-    })
-
-    const colorSelectors = document.querySelectorAll('.cube-color-select');
-    colorSelectors.forEach((b) => {
-        b.addEventListener('change', updateCubeColor);
-    });
+    addEventListeners();
 }
 
 function stringToCamel(thisName) {
-    const nameRay = thisName.split('');
-    let newName = '';
-    nameRay.forEach((c, i) => {
-        newName += (i === 0) ? c.toUpperCase() : c;
-    });
-    return newName;
+    return thisName.charAt(0).toUpperCase() + thisName.slice(1);
 }
 
-function updateCubeSize(e) {
-    e.preventDefault();
-    const splitId = e.target.id.split(/-/g);
-    const cubeName = splitId[0];
+function updateCubeParamsButton(e) {
+    const [cubeName, attrName, axis, direction] = e.target.id.split(/-/g);
+    updateCubeParams(cubeName, attrName, axis, direction);
+}
+
+function updateCubeParams(cubeName, attrName, axis, direction = undefined, newValue = undefined) {
     const cube = scene.getObjectByName(cubeName);
-    const oldVal = document.getElementById(`${cubeName}-size`).value;
-    const newValue = (splitId[2] === 'add') ? Number(oldVal) + 1 : Number(oldVal) - 1;
-    document.getElementById(`${cubeName}-size`).value = newValue;
-    cube.geometry = new THREE.BoxGeometry(newValue, newValue, newValue);
-    animate();
-}
+    const targetInput = document.getElementById(`${cubeName}-${attrName}-${axis}`);
+    const oldValue = Number(targetInput.value);
+    const oldCubeSize = { x: cube.geometry.parameters.width, y: cube.geometry.parameters.height, z: cube.geometry.parameters.depth };
+    if (!newValue) {
+        newValue = (direction === 'add')
+            ? oldValue + defaultValues.incrementStep
+            : (attrName === 'size' && oldValue - defaultValues.incrementStep > 0 || attrName === 'pos')
+                ? oldValue - defaultValues.incrementStep
+                : oldValue;
+    }
+    targetInput.value = newValue;
+    if (attrName === 'size') {
+        switch (axis) {
+            case 'x':
+                cube.geometry = new THREE.BoxGeometry(newValue, oldCubeSize.y, oldCubeSize.z);
+                break;
+            case 'y':
+                cube.geometry = new THREE.BoxGeometry(oldCubeSize.x, newValue, oldCubeSize.z);
+                break;
+            case 'z':
+                cube.geometry = new THREE.BoxGeometry(oldCubeSize.x, oldCubeSize.y, newValue);
+                break;
+        }
+    } else if (attrName === 'pos') {
+        cube.position[axis] = newValue;
+    } else {
+        console.error(`Something went wrong editing the cube: attrName is ${attrName}, needs to be 'size' or 'pos'`);
+    }
 
-function updateCubePosition(e) {
-    const splitId = e.target.id.split(/-/g);
-    const axis = splitId[1];
-    const direction = splitId[2];
-    const cube = scene.getObjectByName(splitId[0]);
-    const thisInput = document.querySelector(`#${splitId[0]}-${axis}`);
-    const calcNewVal = (axis, direction) => {
-        const curPos = Number(cube.position[axis]);
-        return (direction === 'add') ? curPos + defaultValues.incrementStep : curPos - defaultValues.incrementStep;
-    };
-    let newVal = calcNewVal(axis, direction);
-    thisInput.value = cube.position[axis] = newVal;
     animate();
 }
 
@@ -346,6 +396,14 @@ function updateCubeColor(e) {
         cube.material.color.setHex(color.threeHex);
     }
     animate();
+}
+
+function updateCubeParamsInput(e) {
+    e.preventDefault();
+    const [cubeName, attrName, axis] = e.target.id.split(/-/g);
+    let newValue = e.target.value;
+    if (attrName === 'size' && newValue <= 0) newValue = 0.1;
+    updateCubeParams(cubeName, attrName, axis, undefined, newValue);
 }
 
 function animate() {
@@ -360,24 +418,17 @@ function convertDegToRads(deg) {
     return (deg * (PI / 180));
 }
 
-function incrementButton(e) {
+function incrementValue(e) {
     e.preventDefault();
-    const thisId = e.target.id;
-    let dir = 0;
-    let idData = undefined;
-    if (thisId.indexOf('-add') > -1) {
-        idData = thisId.split('-add');
-        dir = defaultValues.incrementStep;
-    } else if (thisId.indexOf('-minus') > -1) {
-        idData = thisId.split('-minus')
-        dir = defaultValues.incrementStep * -1;
-    }
-    const targetInput = document.querySelector(`#${idData[0]}`);
-    // positions can be 0 and negative, but not size
-    if (idData[0] === 'box-size' && dir < 0 && targetInput.value <= 1) {
-        return;
-    }
-    targetInput.value = Number(targetInput.value) + dir;
+    const [attrName, axis, direction] = e.target.id.split(/-/g);
+    const targetInput = document.getElementById(`${attrName}-${axis}`);
+    const oldValue = Number(targetInput.value);
+    // Size can't be less than zero
+    targetInput.value = (direction === 'add')
+        ? oldValue + defaultValues.incrementStep
+        : (attrName === 'size' && oldValue - defaultValues.incrementStep > 0 || attrName === 'pos')
+            ? oldValue - defaultValues.incrementStep
+            : oldValue;
 }
 
 function populateColorSelect(targetId, selectedColor) {
@@ -400,58 +451,141 @@ function removeCube(e) {
     addCurrentCubesToMenu();
 }
 
-function updateBoxSizeDisplay(e) {
-    document.querySelector('#box-size-display').innerHTML = e.target.value;
+function removeEventListeners() {
+    // since we're using dynamically generated DOM, we need to clean up our
+    // Event Listeners in order to prevent memory issues
+    const colorSelectors = document.querySelectorAll('.cube-color-select');
+    colorSelectors.forEach((b) => {
+        b.removeEventListener('change', updateCubeColor);
+    });
+
+    const cubeInputs = document.querySelectorAll('.cube-input');
+    cubeInputs.forEach((i) => {
+        i.removeEventListener('keyup', updateCubeParamsInput);
+    });
+
+    const delCubeButtons = document.querySelectorAll('.remove-cube');
+    delCubeButtons.forEach((b) => {
+        b.removeEventListener('click', removeCube);
+    });
+
+    const incrementButtons = document.querySelectorAll('.cube-increment');
+    incrementButtons.forEach((b) => {
+        b.removeEventListener('click', updateCubeParamsButton);
+    });
+}
+
+function addEventListeners() {
+    const colorSelectors = document.querySelectorAll('.cube-color-select');
+    colorSelectors.forEach((b) => {
+        b.addEventListener('change', updateCubeColor);
+    });
+
+    const cubeInputs = document.querySelectorAll('.cube-input');
+    cubeInputs.forEach((i) => {
+        i.addEventListener('keyup', updateCubeParamsInput);
+    });
+
+    const delCubeButtons = document.querySelectorAll('.remove-cube');
+    delCubeButtons.forEach((b) => {
+        b.addEventListener('click', removeCube);
+    });
+
+    const incrementButtons = document.querySelectorAll('.cube-increment');
+    incrementButtons.forEach((b) => {
+        b.addEventListener('click', updateCubeParamsButton);
+    });
 }
 
 document.querySelector('#app').innerHTML = `
     <div class="main-container">
         <div id="scene-container"></div>
-        <div id="edit-container" class="container controls-container">
-            <div class="row mb-1">
-                <p>Current Cubes:</p>
-            </div>
-            <div id="current-cubes"></div>
-        </div>
-        <div id="add-box-container" class="container controls-container">
-            <form id="add-box-form" action="" onsubmit="return false;" class="col custom-form">
+        <div class="container" id="controls-container">
+            <div id="add-box-container" class="container-fluid mb-3">
                 <div class="row mb-1">
-                    <p>Add new cube:</p>
+                    <button class="btn btn-secondary collapse-button collapsed col-12 ml-1" id="collapse-add-new" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#addNewContainer" aria-expanded="false" 
+                            aria-controls="#addNewContainer">
+                            <span>Add New Cube</span>
+                            <span class="material-symbols-outlined expand-more">expand_more</span>
+                            <span class="material-symbols-outlined expand-less">expand_less</span>
+                    </button>
                 </div>
-                <div class="mb-1">
-                    <label for="box-size">Size (1-10):</label>
-                    <span id="box-size-display">1</span>
+                <div class="collapse collapse-row" id="addNewContainer">
+                    <form id="add-box-form" action="" onsubmit="return false;" class="col custom-form">
+                        <div class="input-group mb-3">
+                            <label class="custom-label">Size (X/Y/Z):</label>
+                            <div class="input-group mb-1">
+                                <span class="input-group-text">X:</span>
+                                <button id="size-x-minus" class="btn btn-outline-primary increment-button">-</button>
+                                <input class="form-control" type="number" placeholder="X" name="size-x" id="size-x" value="${defaultValues.boxSize.x}" />
+                                <button id="size-x-add" class="btn btn-outline-primary increment-button">+</button>
+                            </div>
+                            <div class="input-group mb-1">
+                                <span class="input-group-text">Y:</span>
+                                <button id="size-y-minus" class="btn btn-outline-primary increment-button">-</button>
+                                <input class="form-control" type="number" placeholder="Y" name="size-y" id="size-y" value="${defaultValues.boxSize.y}" />
+                                <button id="size-y-add" class="btn btn-outline-primary increment-button">+</button>
+                            </div>
+                            <div class="input-group mb-1">
+                                <span class="input-group-text">Z:</span>
+                                <button id="size-z-minus" class="btn btn-outline-primary increment-button">-</button>
+                                <input class="form-control" type="number" placeholder="Z" name="size-z" id="size-z" value="${defaultValues.boxSize.z}" />
+                                <button id="size-z-add" class="btn btn-outline-primary increment-button">+</button>
+                            </div>
+                        </div>
+                        <div class="input-group mb-3">
+                            <label class="input-group-text" for="box-color">Color:</label>
+                            <select class="form-select" name="box-color" id="box-color"></select>
+                        </div>
+                        <div class="input-group mb-3">
+                            <label class="custom-label">Position (X/Y/Z):</label>
+                            <div class="input-group mb-1">
+                                <span class="input-group-text">X:</span>
+                                <button id="pos-x-minus" class="btn btn-outline-primary increment-button">-</button>
+                                <input class="form-control" type="number" placeholder="X" name="pos-x" id="pos-x" value="${defaultValues.boxPos.x}" />
+                                <button id="pos-x-add" class="btn btn-outline-primary increment-button">+</button>
+                            </div>
+                            <div class="input-group mb-1">
+                                <span class="input-group-text">Y:</span>
+                                <button id="pos-y-minus" class="btn btn-outline-primary increment-button">-</button>
+                                <input class="form-control" type="number" placeholder="Y" name="pos-y" id="pos-y" value="${defaultValues.boxPos.y}" />
+                                <button id="pos-y-add" class="btn btn-outline-primary increment-button">+</button>
+                            </div>
+                            <div class="input-group mb-1">
+                                <span class="input-group-text">Z:</span>
+                                <button id="pos-z-minus" class="btn btn-outline-primary increment-button">-</button>
+                                <input class="form-control" type="number" placeholder="Z" name="pos-z" id="pos-z" value="${defaultValues.boxPos.z}" />
+                                <button id="pos-z-add" class="btn btn-outline-primary increment-button">+</button>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <button class="btn btn-secondary col" id="clear-form">Reset</button>
+                            <button class="btn btn-primary col" id="add-cube">Add Cube</button>
+                        </div>
+                    </form>
                 </div>
-                <div class="input-group mb-3">
-                    <input type="range" class="form-range" name="box-size" id="box-size" value="${defaultValues.boxSize}" step="${defaultValues.incrementStep}" min="${defaultValues.sizeMin}" max="${defaultValues.sizeMax}" />
+            </div>
+            <div id="edit-container" class="container-fluid">
+                <div class="row mb-1">
+                    <p>Current Cubes:</p>
                 </div>
-                <div class="input-group mb-3">
-                    <label class="input-group-text" for="box-color">Color:</label>
-                    <select class="form-select" name="box-color" id="box-color"></select>
-                </div>
-                <div class="input-group mb-3">
-                    <p>Position (X/Y/Z):</p>
-                    <div class="input-group mb-1">
-                        <span class="input-group-text">X:</span>
-                        <button id="box-x-minus" class="btn btn-outline-primary box-x-button">-</button>
-                        <input class="form-control" type="number" placeholder="X" name="box-x" id="box-x" value="${defaultValues.boxPos.x}" />
-                        <button id="box-x-add" class="btn btn-outline-primary box-x-button">+</button>
+                <div id="current-cubes"></div>
+            </div>
+        </div>
+        <div class="modal" id="modal-popup" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title"></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    <div class="input-group mb-1">
-                        <span class="input-group-text">Y:</span>
-                        <button id="box-y-minus" class="btn btn-outline-primary box-y-button">-</button>
-                        <input class="form-control" type="number" placeholder="Y" name="box-y" id="box-y" value="${defaultValues.boxPos.y}" />
-                        <button id="box-y-add" class="btn btn-outline-primary box-y-button">+</button>
-                    </div>
-                    <div class="input-group mb-1">
-                        <span class="input-group-text">Z:</span>
-                        <button id="box-z-minus" class="btn btn-outline-primary box-z-button">-</button>
-                        <input class="form-control" type="number" placeholder="Z" name="box-z" id="box-z" value="${defaultValues.boxPos.z}" />
-                        <button id="box-z-add" class="btn btn-outline-primary box-z-button">+</button>
+                    <div class="modal-body"></div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                     </div>
                 </div>
-                <button class="btn btn-primary" id="add-cube">Add Cube</button>
-            </form>
+            </div>
         </div>
     </div>
 `;
@@ -459,22 +593,12 @@ document.querySelector('#app').innerHTML = `
 populateColorSelect('box-color', 'red');
 
 // Set up events after DOM load
-document.querySelector('#add-cube').addEventListener('click', addCubeToScene);
-document.querySelector('#box-size').addEventListener('input', updateBoxSizeDisplay);
+document.querySelector('#add-cube').addEventListener('click', prepCubeForScene);
+document.querySelector('#clear-form').addEventListener('click', resetAddForm);
 
-const boxXButtons = document.querySelectorAll('.box-x-button');
-boxXButtons.forEach((b) => {
-    b.addEventListener('click', incrementButton);
-});
-
-const boxYButtons = document.querySelectorAll('.box-y-button');
-boxYButtons.forEach((b) => {
-    b.addEventListener('click', incrementButton);
-});
-
-const boxZButtons = document.querySelectorAll('.box-z-button');
-boxZButtons.forEach((b) => {
-    b.addEventListener('click', incrementButton);
+const incrementButtons = document.querySelectorAll('.increment-button');
+incrementButtons.forEach((b) => {
+    b.addEventListener('click', incrementValue);
 });
 
 init();
