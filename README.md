@@ -6,9 +6,7 @@ Live demo is at [https://cube-builder.chrislcoray.com/](https://cube-builder.chr
 
 ### Premise
 
-The premise is pretty simple: we start with a green cube, 1x1x1 units large. Using the right-side menu, we can add more cubes to the scene. Once a cube is added, it can then be edited using the left hand menu.
-
-Unfortunately, since this was built using Vite, which uses innerHTML "JSX"-style templates, there are a few side effects I didn't love, like having to call all event-driven functionality after the DOM load in a separate section. The Bootstrap collapse used in the left-hand menu, for example, needs to be instantiated manually in the code and defaults to open, despite the fact that the setup should show them closed.
+The premise is pretty simple: we start with a green cube, 1x1x1 units large. Using the right-side menu, we can add more cubes to the scene. Once a cube is added, it can then be edited using the options nested in the dropdown.
 
 ### In-app controls
 
