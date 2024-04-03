@@ -130,12 +130,12 @@ button.btn.collapse-button {
 }
 
 #edit-container {
+    .material-symbols-outlined {
+        cursor: pointer;
+    }
+
     #current-cubes {
         .cube-row {
-            .material-symbols-outlined {
-                cursor: pointer;
-            }
-
             .cube-edit-name {
                 color: #FFFFFF;
                 padding: 3px;
@@ -151,6 +151,8 @@ button.btn.collapse-button {
             }
         }
     }
+
+
 }
 
 .modal {

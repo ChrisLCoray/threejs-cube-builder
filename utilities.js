@@ -120,3 +120,5 @@ export const instructions = [
     `The new cube is created using the same values of the wireframe cube. The values of the form remain the same by default, so that new cubes can be created by only adjusting the values you want to adjust. If you would like to reset the form, click the "Reset" button instead and the wireframe cube should update to the new values.`,
     `If you decide to adjust a cube after placing it, the "Add New Cube" form can be collapsed by clicking on the title, and the cube you would like to adjust can be found in the list below the menu. The colored box next to the cube name shows the color of the cube, to make it easier to locate. Click the cube name to expand the controls for that cube, which operate the same as the "Add New Cube" form. You will see your changes being updated in the scene automatically.`
 ]
+
+export const points = ['x', 'y', 'z'];

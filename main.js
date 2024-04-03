@@ -1,13 +1,13 @@
 import './styles/style.scss'
 import * as THREE from 'three';
-// Bootstrap imports look unused, but only because DOM is generated
+// Some Bootstrap imports look unused, but only because DOM is generated
 import { Collapse } from 'bootstrap';
 import { Modal } from 'bootstrap';
 
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-import { cameraSettings, capitalizeFirst, colors, convertDegToRads, defaultValues as dv, getColorByName, instructions } from './utilities';
+import { cameraSettings, capitalizeFirst, colors, convertDegToRads, defaultValues as dv, getColorByName, instructions, points } from './utilities';
 
 // Setup
 let camera, container, controls, cubeNum = 0, renderer, scene;
@@ -64,9 +64,7 @@ function addBoxToScene(hexColor, size, pos) {
     const geometry = new THREE.BoxGeometry(size.x, size.y, size.z);
     const material = new THREE.MeshBasicMaterial({ color: color });
     const cube = new THREE.Mesh(geometry, material);
-    cube.position.x = pos.x;
-    cube.position.y = pos.y;
-    cube.position.z = pos.z;
+    positionCube(cube, pos);
     cube.name = `cube${cubeNum}`;
     cubeNum++;
     scene.add(cube);
@@ -238,16 +236,12 @@ function getAttrsFromForm() {
     const addCubeForm = document.getElementById('add-box-form');
     const color = getColorByName(addCubeForm.querySelector('#box-color').value);
     const colorHex = color?.threeHex;
-    const cubePos = {
-        x: Number(addCubeForm.querySelector(`#${dv.cubeName}-pos-x`).value),
-        y: Number(addCubeForm.querySelector(`#${dv.cubeName}-pos-y`).value),
-        z: Number(addCubeForm.querySelector(`#${dv.cubeName}-pos-z`).value)
-    };
-    const cubeSize = {
-        x: Number(addCubeForm.querySelector(`#${dv.cubeName}-size-x`).value),
-        y: Number(addCubeForm.querySelector(`#${dv.cubeName}-size-y`).value),
-        z: Number(addCubeForm.querySelector(`#${dv.cubeName}-size-z`).value)
-    };
+    const cubePos = {};
+    const cubeSize = {};
+    for (const pt of points) {
+        cubePos[pt] = Number(addCubeForm.querySelector(`#${dv.cubeName}-pos-${pt}`).value);
+        cubeSize[pt] = Number(addCubeForm.querySelector(`#${dv.cubeName}-size-${pt}`).value)
+    }
     return [colorHex, cubePos, cubeSize];
 }
 
@@ -304,11 +298,29 @@ function populateColorSelect(targetId, selectedColor) {
     })
 }
 
+function positionCube(cubeObj, source) {
+    for (const pt of points) {
+        cubeObj.position[pt] = source[pt];
+    }
+}
+
 function removeCube(e) {
     e.preventDefault();
     const cubeName = e.target.id.replace('remove-', '');
     const doomedCube = scene.getObjectByName(cubeName);
     scene.remove(doomedCube);
+    animate();
+    addCurrentCubesToMenu();
+}
+
+function removeAllCubes(e) {
+    e.preventDefault();
+    // get all cubes from scene and delete
+    const cubesToRemove = scene.children.filter(child => child.name.indexOf('cube') > -1);
+    for (const cube of cubesToRemove) {
+        scene.remove(cube);
+    }
+
     animate();
     addCurrentCubesToMenu();
 }
@@ -335,14 +347,24 @@ function removeEventListeners() {
 
 function resetAddForm(e) {
     e.preventDefault();
+    const wf = scene.getObjectByName(dv.cubeName);
     const targetForm = document.getElementById('add-box-form');
+
     targetForm.querySelector('#box-color').value = dv.boxColor;
-    targetForm.querySelector('#size-x').value = dv.boxSize.x;
-    targetForm.querySelector('#size-y').value = dv.boxSize.y;
-    targetForm.querySelector('#size-z').value = dv.boxSize.z;
-    targetForm.querySelector('#pos-x').value = dv.boxPos.x;
-    targetForm.querySelector('#pos-y').value = dv.boxPos.y;
-    targetForm.querySelector('#pos-z').value = dv.boxPos.z;
+
+    for (const pt of points) {
+        targetForm.querySelector(`#${dv.cubeName}-pos-${pt}`).value = dv.boxPos[pt];
+        targetForm.querySelector(`#${dv.cubeName}-size-${pt}`).value = dv.boxSize[pt];
+        wf.position[pt] = dv.boxPos[pt];
+    }
+
+    wf.geometry = new THREE.BoxGeometry(dv.boxSize.x, dv.boxSize.y, dv.boxSize.z);
+}
+
+function resizeViewport() {
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
 }
 
 function showInstructions(e) {
@@ -396,9 +418,8 @@ function toggleTempWireframe(e) {
         cubeBox.material.opacity = 0.25;
         cubeBox.material.transparent = true;
         cubeBox.name = dv.cubeName;
-        cubeBox.position.x = cubePos.x;
-        cubeBox.position.y = cubePos.y;
-        cubeBox.position.z = cubePos.z;
+
+        positionCube(cubeBox, cubePos)
 
         scene.add(cubeBox);
     }
@@ -427,6 +448,9 @@ function updateCubeInScene(cube, attrName, axis, newValue) {
                 break;
             case 'z':
                 cube.geometry = new THREE.BoxGeometry(oldCubeSize.x, oldCubeSize.y, newValue);
+                break;
+            default:
+                console.error(`updateCubeInScene: value for 'axis' in 'size' not recognized, values expected: 'x', 'y', 'z'. Value received: ${axis}`);
                 break;
         }
     } else if (attrName === 'pos') {
@@ -601,7 +625,10 @@ document.querySelector('#app').innerHTML = `
             </div>
             <div id="edit-container" class="container-fluid">
                 <div class="row mb-1">
-                    <p>Current Cubes:</p>
+                    <div class="col-3">
+                        <span class="material-symbols-outlined" id="delete-all-cubes">delete_sweep</span>
+                    </div>
+                    <div class="col-9">Current Cubes:</div>
                 </div>
                 <div id="current-cubes"></div>
             </div>
@@ -626,10 +653,12 @@ document.querySelector('#app').innerHTML = `
 populateColorSelect('box-color', 'white');
 
 // Set up events after DOM load
+window.addEventListener('resize', resizeViewport);
 document.querySelector('#add-cube').addEventListener('click', parseCubeDataForScene);
 document.querySelector('#clear-form').addEventListener('click', resetAddForm);
 document.querySelector('#collapse-add-new').addEventListener('click', toggleTempWireframe);
 document.querySelector('#instructions').addEventListener('click', showInstructions);
+document.querySelector('#delete-all-cubes').addEventListener('click', removeAllCubes);
 
 document.querySelectorAll('.increment-button').forEach((b) => {
     b.addEventListener('click', updateCubeParamsButton);
